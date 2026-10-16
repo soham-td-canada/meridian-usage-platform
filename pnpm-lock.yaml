@@ -208,7 +208,11 @@ importers:
 
   packages/domain: {}
 
-  packages/ingestion: {}
+  packages/ingestion:
+    dependencies:
+      '@meridian/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/persistence: {}
 
