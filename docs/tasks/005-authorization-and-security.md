@@ -56,7 +56,6 @@ Group rule for an allowed scope:
 - An unavailable snapshot or a missing `(homeGroup, usage-connector)` row fails closed with `capability_state_unavailable`.
 - Persisted `enabled` state is the only source of truth. The authorization engine does not read environment defaults and does not mutate capability state.
 
-
 ## Denial shape and codes
 
 Maps to the contract `Denial`: `{ error: 'permission_denied', code, reason, required_scope? }` (`code` is an additive field; `reason` is a fixed string per code).
