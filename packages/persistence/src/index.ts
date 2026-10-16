@@ -3,3 +3,4 @@ export * from './db.js';
 export * from './errors.js';
 export * from './ingest-and-persist.js';
 export * from './state.js';
+export * from './usage-queries.js';
