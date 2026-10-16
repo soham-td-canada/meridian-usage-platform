@@ -53,7 +53,7 @@ export interface ReportRow {
 }
 
 export interface ActiveRow {
-  readonly key: string;
+  readonly keyDigest: string;
   readonly source: RowSourceKind;
   readonly fingerprint: string;
   readonly artifactSha256: string;
@@ -63,7 +63,7 @@ export interface ActiveRow {
   readonly observations: readonly Observation[];
 }
 
-/** Plain in-memory value. Active rows are keyed by source key, in sorted key order. */
+/** Plain in-memory value. Active rows are keyed by source-key digest, in sorted digest order. */
 export interface IngestionState {
   readonly active: ReadonlyMap<string, ActiveRow>;
   readonly artifacts: readonly SourceArtifact[];

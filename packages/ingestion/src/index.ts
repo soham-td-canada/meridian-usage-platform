@@ -18,6 +18,7 @@ export type {
   ReportRow,
   SourceFailure,
 } from './ingest/types.js';
+export { loadDirectory } from './directory/adapter.js';
 export { detectGaps, type DateWindow } from './reconcile/gaps.js';
 export type { ReconciliationReport } from './reconcile/reconcile.js';
 export * from './reconcile/status.js';

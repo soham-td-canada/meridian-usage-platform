@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { finalizeRun, ingest, processArtifacts } from '../../src/ingest/ingest.js';
-import type { RawArtifact } from '../../src/ingest/types.js';
+import type { ActiveRow, IngestionState, RawArtifact } from '../../src/ingest/types.js';
 import {
   claudeBytes,
   claudeRows,
@@ -18,6 +18,28 @@ import {
 const usageRows = claudeRows(FIXTURE.claudeUsage);
 const costRows = claudeRows(FIXTURE.claudeCost);
 const BASELINE = ingest(fixtureArtifacts());
+
+function rebuildPriorState(state: IngestionState): IngestionState {
+  const activeEntries = [...state.active.entries()]
+    .map(([keyDigest, row]): readonly [string, ActiveRow] => [
+      keyDigest,
+      {
+        keyDigest: row.keyDigest,
+        source: row.source,
+        fingerprint: row.fingerprint,
+        artifactSha256: row.artifactSha256,
+        directorySha256: row.directorySha256,
+        ref: { source: row.ref.source, rowIndex: row.ref.rowIndex },
+        observations: row.observations.map((observation) => structuredClone(observation)),
+      },
+    ])
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
+  return {
+    active: new Map(activeEntries),
+    artifacts: state.artifacts.map((artifact) => ({ ...artifact })),
+  };
+}
 
 const withUsage = (rows: readonly JsonRecord[]) =>
   ingest(fixtureArtifacts({ claudeUsage: claudeBytes(rows) }));
@@ -81,6 +103,22 @@ describe('duplicate and conflict handling', () => {
 });
 
 describe('replay and restatement', () => {
+  it('C2: digest-keyed prior state rebuild replays identically', () => {
+    const rebuilt = rebuildPriorState(BASELINE.state);
+    expect([...rebuilt.active.keys()]).toEqual([...BASELINE.state.active.keys()]);
+    expect(
+      [...rebuilt.active.entries()].every(
+        ([keyDigest, row]) => row.keyDigest === keyDigest && keyDigest.length === 64,
+      ),
+    ).toBe(true);
+    const replay = ingest(fixtureArtifacts(), rebuilt);
+    expect(replay.report.counts.accepted).toBe(0);
+    expect(replay.report.counts.replayed).toBe(BASELINE.report.counts.accepted);
+    expect(replay.report.counts.restatements).toBe(0);
+    expect(replay.report.counts.priorKeysAbsent).toBe(0);
+    expect(replay.state.active).toEqual(BASELINE.state.active);
+  });
+
   it('R1: exact replay is deterministic and adds nothing', () => {
     expect(ingest(fixtureArtifacts())).toEqual(BASELINE);
     const replay = ingest(fixtureArtifacts(), BASELINE.state);
@@ -165,6 +203,7 @@ describe('replay and restatement', () => {
     expect([...replay.state.active.keys()]).toEqual([...BASELINE.state.active.keys()]);
     for (const [key, row] of BASELINE.state.active) {
       expect(replay.state.active.get(key)).toBe(row);
+      expect(row.keyDigest).toBe(key);
     }
     expect(replay.state.artifacts).toEqual(BASELINE.state.artifacts);
     expect(replay.report.rows.every((row) => row.disposition.kind === 'accepted')).toBe(true);

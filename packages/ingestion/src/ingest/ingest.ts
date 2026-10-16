@@ -9,8 +9,8 @@ import {
   artifactOf,
   compareStrings,
   directoryArtifactOf,
+  keyDigestOf,
   ROW_SOURCES,
-  sha256Hex,
   SOURCE_ORDER,
   type RowSourceKind,
   type SourceArtifact,
@@ -223,7 +223,7 @@ export function processArtifacts(
 function reportRowOf(row: DisposedRow): ReportRow {
   const { key, ...rest } = row.provenance;
   return {
-    provenance: { ...rest, keyDigest: key === undefined ? undefined : sha256Hex(key) },
+    provenance: { ...rest, keyDigest: key === undefined ? undefined : keyDigestOf(key) },
     disposition: row.disposition,
   };
 }

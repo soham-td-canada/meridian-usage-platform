@@ -1,4 +1,4 @@
-import { compareStrings } from './identity.js';
+import { compareStrings, keyDigestOf } from './identity.js';
 import type {
   ActiveRow,
   DisposedRow,
@@ -58,6 +58,7 @@ export function disposeRows(
   const dispositions = new Map<ProcessedRow, Disposition>();
   const accepted: ActiveRow[] = [];
   const seenKeys = new Set<string>();
+  const presentKeyDigests = new Set<string>();
 
   for (const row of ordered) {
     const key = row.provenance.key;
@@ -65,6 +66,8 @@ export function disposeRows(
       dispositions.set(row, { kind: 'quarantined', reason: { kind: 'key_unextractable' } });
       continue;
     }
+    const keyDigest = keyDigestOf(key);
+    presentKeyDigests.add(keyDigest);
     const group = byKey.get(key) ?? [];
     const distinct = new Set(group.map((member) => member.provenance.fingerprint)).size;
     if (distinct > 1) {
@@ -72,7 +75,7 @@ export function disposeRows(
       continue;
     }
 
-    const priorRow = prior.active.get(key);
+    const priorRow = prior.active.get(keyDigest);
     if (priorRow !== undefined) {
       const sameContent =
         priorRow.fingerprint === row.provenance.fingerprint &&
@@ -108,7 +111,7 @@ export function disposeRows(
       seenKeys.add(key);
       dispositions.set(row, { kind: 'accepted', replay: false });
       accepted.push({
-        key,
+        keyDigest,
         source: row.provenance.source,
         fingerprint: row.provenance.fingerprint,
         artifactSha256: row.provenance.artifactSha256,
@@ -118,19 +121,17 @@ export function disposeRows(
       });
     }
   }
-
   const merged = new Map<string, ActiveRow>(prior.active);
   for (const row of accepted) {
-    merged.set(row.key, row);
+    merged.set(row.keyDigest, row);
   }
   const nextActive = new Map<string, ActiveRow>(
     [...merged.entries()].sort(([a], [b]) => compareStrings(a, b)),
   );
 
-  const presentKeys = new Set(byKey.keys());
   let priorKeysAbsent = 0;
-  for (const key of prior.active.keys()) {
-    if (!presentKeys.has(key)) {
+  for (const keyDigest of prior.active.keys()) {
+    if (!presentKeyDigests.has(keyDigest)) {
       priorKeysAbsent += 1;
     }
   }

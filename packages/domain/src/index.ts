@@ -1,5 +1,6 @@
 export * from './attribution.js';
 export * from './brand.js';
+export * from './capability.js';
 export * from './count.js';
 export * from './dimensions.js';
 export * from './directory.js';

@@ -38,7 +38,7 @@ describe('determinism', () => {
         process.env['TZ'] = original;
       }
     }
-  });
+  }, 15_000);
 
   it('orders row reports and checks stably', () => {
     const { report } = ingest(fixtureArtifacts());

@@ -35,6 +35,8 @@ export interface SourceArtifact {
 export const sha256Hex = (data: Uint8Array | string): string =>
   createHash('sha256').update(data).digest('hex');
 
+export const keyDigestOf = (rawSourceKey: string): string => sha256Hex(rawSourceKey);
+
 export function artifactOf(source: RowSourceKind, bytes: Uint8Array): SourceArtifact {
   return { source, sha256: sha256Hex(bytes), byteLength: bytes.byteLength };
 }
