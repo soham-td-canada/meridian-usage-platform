@@ -15,30 +15,6 @@ MERIDIAN_ENV=staging pnpm start:api       # terminal 2: http://127.0.0.1:3200
 
 Keep `README.md` (Architecture) and a terminal ready. Do not read code aloud.
 
-## 1. What it does (0:00, 25 s)
-
-- **Action:** Show the README title and first paragraph.
-- **Should appear:** Platform overview.
-- **Say:** "Meridian reports Claude and Gemini usage and cost by group and week, controls capabilities per group, and enforces who can see or change what on the server. The same service is available through an Admin UI, an HTTP API and an MCP server."
-
-## 2. Architecture and trust boundary (0:25, 50 s)
-
-- **Action:** Show the Architecture diagram.
-- **Should appear:** Exports, normalization, SQLite, ToolService, policy, three transports.
-- **Say:** "Authorization lives below every transport, so no client can bypass it. Identity comes from a trusted directory; roles, scopes and groups are never accepted from a request or a prompt."
-
-## 3. Data integrity (1:15, 40 s)
-
-- **Action:** Show the four-line "!=" block in Mapping & Data Integrity.
-- **Should appear:** The four distinctions.
-- **Say:** "Claude and Gemini keep their own semantics. Money is exact integers. A replay adds nothing, a restatement is flagged, and unexplained reconciliation deltas fail the run. No data is never reported as zero."
-
-## 4. Authorization model (1:55, 45 s)
-
-- **Action:** Show the authorization matrix.
-- **Should appear:** Role by environment table.
-- **Say:** "Dev is permissive by design. Staging and prod let leads read only their own group. A disabled usage-connector blocks reads, but set_capability stays available so it can be recovered, and it still needs role, scope and group."
-
 ## 5. Admin UI (2:40, 100 s)
 
 - **Action:** Open `http://127.0.0.1:3100`. Caller: Priya Nair, Group: Clinical Operations, Week: 2026-W36, Load.
@@ -96,12 +72,6 @@ curl -s -i -H "X-Meridian-User-Id: user_E7691888F28227066DD2FB86" \
 - **Action:** Show the `pnpm check` summary (536 tests), `pnpm validate:provisioning` output, `ls generated/staging/claude-plugin generated/staging/gemini-extension` and `.github/workflows/ci.yml`.
 - **Should appear:** All tests passing; `provisioning validation passed: dev, staging, prod`; the two package folders; CI jobs.
 - **Say:** "Tests cover mapping, authorization attacks, real server processes and a browser run. CI repeats them in two timezones and validates provisioning. Provisioning also generates a Claude plugin and a Gemini extension that launch this same MCP server; they are validated by tests, not yet installed in a live host."
-
-## 9. AI-assisted review (6:50, 40 s)
-
-- **Action:** Show the AI-Assisted Development section.
-- **Should appear:** Use and override list.
-- **Say:** "Agents planned, implemented and attacked the code, but review overruled them: a write-before-refusal migration bug, `period` treated as optional, validation order leaking to denied callers, and an Admin recovery gap."
 
 ## 10. Production evolution (7:30, 20 s)
 

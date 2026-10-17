@@ -21,12 +21,12 @@ Claude and Gemini packages are generated and validated by repository tests. They
 
 ## Manual remaining
 
-- [ ] Review the final diff
-- [ ] Untrack `.idea/` (`git rm -r --cached .idea`); it is git-ignored but was committed and contains local paths
-- [ ] Commit
-- [ ] Push
-- [ ] Verify the GitHub Actions run is green
-- [ ] Record the Loom using `docs/demo-script.md`
-- [ ] Add or share the Loom URL where required
-- [ ] Confirm reviewer repository access
-- [ ] Optional: validate the plugin and extension in live Claude Code and Gemini CLI sessions
+- [x] Review the final diff
+- [x] Untrack `.idea/` (`git rm -r --cached .idea`); it is git-ignored but was committed and contains local paths
+- [x] Commit
+- [x] Push
+- [x] Verify the GitHub Actions run is green
+- [x] Record the Loom using `docs/demo-script.md`
+- [x] Add or share the Loom URL where required
+- [x] Confirm reviewer repository access
+- [x] Optional: validate the plugin and extension in live Claude Code and Gemini CLI sessions
