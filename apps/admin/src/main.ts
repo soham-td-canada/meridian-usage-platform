@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 import { parseEnvironment } from '../../../packages/config/src/index.js';
@@ -16,7 +17,7 @@ function die(message: string): never {
   process.exit(1);
 }
 
-const environment = parseEnvironment(process.env['MERIDIAN_ENV'] ?? 'dev');
+const environment = parseEnvironment(process.env['MERIDIAN_ENV'] ?? '');
 if (!environment.ok) {
   die('MERIDIAN_ENV must be one of dev, staging, prod');
 }
@@ -29,9 +30,15 @@ const directory = loadTrustedDirectory(STARTER_KIT_DIR);
 if (!directory.ok) {
   die('trusted directory could not be loaded');
 }
-const database = openPersistenceDatabase(
-  resolve(REPO_ROOT, process.env['MERIDIAN_DB_PATH'] ?? databasePathFor(environment.value)),
+const databasePath = resolve(
+  REPO_ROOT,
+  process.env['MERIDIAN_DB_PATH'] ?? databasePathFor(environment.value),
 );
+// Opening a missing path would silently create an empty database.
+if (!existsSync(databasePath)) {
+  die('database not provisioned; run scripts/provision.ts for this environment');
+}
+const database = openPersistenceDatabase(databasePath);
 const app = {
   directory: directory.value,
   service: createToolService({
@@ -66,3 +73,17 @@ const port = Number(process.env['MERIDIAN_ADMIN_PORT'] ?? '3100');
 server.listen(port, '127.0.0.1', () => {
   process.stdout.write(`admin UI on http://127.0.0.1:${String(port)} (${environment.value})\n`);
 });
+
+let stopping = false;
+function shutdown(): void {
+  if (stopping) {
+    return;
+  }
+  stopping = true;
+  server.close(() => {
+    database.close();
+  });
+  server.closeIdleConnections();
+}
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

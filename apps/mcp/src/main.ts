@@ -55,6 +55,13 @@ lines.on('line', (line) => {
     process.stdout.write(`${response}\n`);
   }
 });
-lines.on('close', () => {
+lines.once('close', () => {
   database.close();
+});
+// Closing the reader runs the single close handler above; the process then exits naturally.
+process.once('SIGINT', () => {
+  lines.close();
+});
+process.once('SIGTERM', () => {
+  lines.close();
 });
