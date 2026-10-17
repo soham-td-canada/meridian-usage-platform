@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "start:api": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/api/src/http/main.ts",
     "start:admin": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/admin/src/main.ts",
     "validate:provisioning": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs scripts/validate-provisioning.ts",
     "test:e2e": "playwright test -c apps/admin/e2e/playwright.config.ts",
@@ -33,5 +34,8 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
     "vitest": "^5.0.4"
+  },
+  "dependencies": {
+    "fastify": "^5.12.7"
   }
 }

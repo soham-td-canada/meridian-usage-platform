@@ -101,7 +101,7 @@ Dev is intentionally permissive per `dev.yaml`. Staging and prod apply productio
 - `scripts/provision.ts <dev|staging|prod>` writes `generated/<env>/`: `meridian.sqlite`, `permissions.json`, `claude.mcp.json`, `gemini.settings.json`. `generated/` is git-ignored.
 - Output is deterministic: re-running yields byte-identical config and no duplicate rows. Capability changes made with `set_capability` survive reprovisioning; defaults seed only missing rows.
 - An unknown environment writes nothing and exits 1. Environment selection is always explicit; there is no default.
-- Admin refuses to start in `prod`: it simulates the caller through a UI selector, and no authentication exists. MCP serves all three environments.
+- Admin refuses to start in `prod`: it simulates the caller through a UI selector, and no authentication exists. MCP and the HTTP API (`pnpm start:api`, simulated `X-Meridian-User-Id` identity) serve all three environments.
 - The database path resolves against the repository root, so provisioning and servers work from any working directory.
 - Validate with `pnpm validate:provisioning`.
 
