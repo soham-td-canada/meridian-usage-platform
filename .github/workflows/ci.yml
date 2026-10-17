@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format, lint, typecheck, test
+        run: pnpm check
+      - name: Tests in America/Toronto
+        run: TZ=America/Toronto pnpm test
+      - name: Tests in Asia/Kolkata
+        run: TZ=Asia/Kolkata pnpm test
+      - name: Validate provisioning (dev, staging, prod)
+        run: pnpm validate:provisioning

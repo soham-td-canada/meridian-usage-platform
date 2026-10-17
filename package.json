@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "start:admin": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/admin/src/main.ts",
+    "validate:provisioning": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs scripts/validate-provisioning.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
   },
   "engines": {
