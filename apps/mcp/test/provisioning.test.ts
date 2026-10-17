@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -17,12 +17,15 @@ import {
   SERVER_ARGS,
   SERVER_COMMAND,
   SERVER_NAMES,
+  claudePluginDir,
   databasePathFor,
+  geminiExtensionDir,
   renderProvisioning,
 } from '../src/provisioning.js';
 
 const RECORDED_AT = '2026-10-01T00:00:00.000Z';
 const roots: string[] = [];
+const directoryNameOf = (path: string): string => path.split('/').slice(-1)[0] ?? '';
 
 function tempRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'meridian-provision-'));
@@ -67,6 +70,13 @@ describe('rendering', () => {
       'permissions.json',
       'claude.mcp.json',
       'gemini.settings.json',
+      `${claudePluginDir(environment)}/.claude-plugin/plugin.json`,
+      `${claudePluginDir(environment)}/.mcp.json`,
+      `${claudePluginDir(environment)}/launch.mjs`,
+      `${claudePluginDir(environment)}/skills/meridian-usage/SKILL.md`,
+      `${geminiExtensionDir(environment)}/gemini-extension.json`,
+      `${geminiExtensionDir(environment)}/launch.mjs`,
+      `${geminiExtensionDir(environment)}/GEMINI.md`,
     ]);
     const env = {
       MERIDIAN_ENV: environment,
@@ -163,6 +173,144 @@ describe('rendering', () => {
   );
 });
 
+describe('platform packaging', () => {
+  const launch = (root: string): string[] => [
+    '--disable-warning=ExperimentalWarning',
+    '--experimental-transform-types',
+    `${root}/launch.mjs`,
+  ];
+
+  it.each(ENVIRONMENTS)('renders a Claude plugin and a Gemini extension for %s', (environment) => {
+    const name = SERVER_NAMES[environment];
+    const plugin = JSON.parse(
+      fileOf(environment, `${claudePluginDir(environment)}/.claude-plugin/plugin.json`),
+    ) as Record<string, unknown>;
+    expect(plugin).toMatchObject({ name, version: '0.1.0' });
+    expect(JSON.parse(fileOf(environment, `${claudePluginDir(environment)}/.mcp.json`))).toEqual({
+      mcpServers: {
+        [name]: {
+          type: 'stdio',
+          command: SERVER_COMMAND,
+          args: launch('${CLAUDE_PLUGIN_ROOT}'),
+          env: {
+            MERIDIAN_ENV: environment,
+            MERIDIAN_DB_PATH: databasePathFor(environment),
+            MERIDIAN_ACTOR_USER_ID: '${MERIDIAN_ACTOR_USER_ID}',
+          },
+        },
+      },
+    });
+
+    const extension = JSON.parse(
+      fileOf(environment, `${geminiExtensionDir(environment)}/gemini-extension.json`),
+    ) as Record<string, unknown>;
+    expect(extension).toMatchObject({
+      name,
+      version: '0.1.0',
+      contextFileName: 'GEMINI.md',
+      settings: [{ envVar: 'MERIDIAN_ACTOR_USER_ID' }],
+      mcpServers: {
+        [name]: {
+          command: SERVER_COMMAND,
+          args: launch('${extensionPath}'),
+          env: {
+            MERIDIAN_ENV: environment,
+            MERIDIAN_DB_PATH: databasePathFor(environment),
+            MERIDIAN_ACTOR_USER_ID: '$MERIDIAN_ACTOR_USER_ID',
+          },
+        },
+      },
+    });
+    // Gemini ignores `trust` in extensions, and no package may ever grant it.
+    expect(JSON.stringify(extension)).not.toContain('trust');
+    expect(directoryNameOf(geminiExtensionDir(environment))).toBe(name);
+  });
+
+  it.each(ENVIRONMENTS)('guidance for %s keeps the trust boundary and the period rule', (env) => {
+    const context = fileOf(env, `${geminiExtensionDir(env)}/GEMINI.md`);
+    const skill = fileOf(env, `${claudePluginDir(env)}/skills/meridian-usage/SKILL.md`);
+    for (const text of [context, skill]) {
+      expect(text).toContain('period is required');
+      expect(text).toContain('Never pass or invent identities');
+      expect(text).toContain('permission_denied');
+    }
+    expect(skill.startsWith('---\nname: meridian-usage\n')).toBe(true);
+  });
+
+  it.each(['claude', 'gemini'] as const)(
+    'the %s package launches the real server through a symlink from an unrelated directory',
+    (kind) => {
+      const copy = tempRoot();
+      const cwd = tempRoot();
+      provisionEnvironment({ environment: 'dev', rootDir: copy, recordedAt: RECORDED_AT });
+      for (const entry of ['apps', 'scripts', 'packages', 'starter-kit', 'node_modules']) {
+        symlinkSync(join(REPO_ROOT, entry), join(copy, entry));
+      }
+      const packageDir = join(
+        copy,
+        'generated/dev',
+        kind === 'claude' ? claudePluginDir('dev') : geminiExtensionDir('dev'),
+      );
+      // Hosts such as `gemini extensions link` expose the package through a symlink.
+      const linked = join(cwd, SERVER_NAMES.dev);
+      symlinkSync(packageDir, linked);
+      const manifest = JSON.parse(
+        readFileSync(
+          join(packageDir, kind === 'claude' ? '.mcp.json' : 'gemini-extension.json'),
+          'utf8',
+        ),
+      ) as {
+        mcpServers: Record<
+          string,
+          { command: string; args: string[]; env: Record<string, string> }
+        >;
+      };
+      const server = manifest.mcpServers[SERVER_NAMES.dev];
+      const member = userWith(loadDirectoryOrThrow(), 'member', 'hr').userId;
+      const request = (name: string, args: object): string =>
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: name,
+          method: 'tools/call',
+          params: { name, arguments: args },
+        });
+      const result = spawnSync(
+        server?.command ?? '',
+        (server?.args ?? []).map((arg) =>
+          arg.replace('${CLAUDE_PLUGIN_ROOT}', linked).replace('${extensionPath}', linked),
+        ),
+        {
+          cwd,
+          input: `${request('usage_summary', { period: '2026-W36' })}\n${request('set_capability', { group: 'hr', capability: 'web-search', enabled: false })}\n`,
+          env: {
+            PATH: process.env['PATH'] ?? '',
+            ...server?.env,
+            MERIDIAN_DB_PATH: relative(REPO_ROOT, join(copy, 'generated/dev/meridian.sqlite')),
+            MERIDIAN_ACTOR_USER_ID: member,
+          },
+          encoding: 'utf8',
+          timeout: 60_000,
+        },
+      );
+      expect(result.status).toBe(0);
+      const [read, write] = result.stdout
+        .trim()
+        .split('\n')
+        .map(
+          (line) =>
+            JSON.parse(line) as { result: { isError: boolean; content: { text: string }[] } },
+        );
+      // dev lets a member read, but only team leads and admins write.
+      expect(read?.result.isError).toBe(false);
+      expect(write?.result.isError).toBe(true);
+      expect(JSON.parse(write?.result.content[0]?.text ?? '{}')).toMatchObject({
+        error: 'permission_denied',
+        code: 'scope_not_granted',
+      });
+    },
+  );
+});
+
 describe('provisioning', () => {
   it.each(ENVIRONMENTS)(
     'provisions %s idempotently and preserves capability changes',
@@ -176,7 +324,14 @@ describe('provisioning', () => {
         readdirSync(outDir)
           .filter((name) => !name.startsWith('meridian.sqlite-'))
           .sort(),
-      ).toEqual(['claude.mcp.json', 'gemini.settings.json', 'meridian.sqlite', 'permissions.json']);
+      ).toEqual([
+        'claude-plugin',
+        'claude.mcp.json',
+        'gemini-extension',
+        'gemini.settings.json',
+        'meridian.sqlite',
+        'permissions.json',
+      ]);
       const snapshot = (): Record<string, string> =>
         Object.fromEntries(
           ['claude.mcp.json', 'gemini.settings.json', 'permissions.json'].map((name) => [

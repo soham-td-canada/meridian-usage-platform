@@ -9,12 +9,28 @@ import {
 import { CAPABILITIES } from '../packages/domain/src/index.js';
 import { listCapabilityState, openPersistenceDatabase } from '../packages/persistence/src/index.js';
 import { STARTER_KIT_DIR, loadTrustedDirectory } from '../apps/api/src/index.js';
-import { SERVER_NAMES } from '../apps/mcp/src/provisioning.js';
+import { SERVER_NAMES, claudePluginDir, geminiExtensionDir } from '../apps/mcp/src/provisioning.js';
 import { provisionEnvironment } from './provision-environment.js';
 
 const RECORDED_AT = '2026-10-01T00:00:00.000Z';
-const FILES = ['permissions.json', 'claude.mcp.json', 'gemini.settings.json', 'meridian.sqlite'];
-const TEXT_FILES = FILES.filter((name) => !name.endsWith('.sqlite'));
+const packageFiles = (environment: Environment): readonly string[] => [
+  `${claudePluginDir(environment)}/.claude-plugin/plugin.json`,
+  `${claudePluginDir(environment)}/.mcp.json`,
+  `${claudePluginDir(environment)}/launch.mjs`,
+  `${claudePluginDir(environment)}/skills/meridian-usage/SKILL.md`,
+  `${geminiExtensionDir(environment)}/gemini-extension.json`,
+  `${geminiExtensionDir(environment)}/launch.mjs`,
+  `${geminiExtensionDir(environment)}/GEMINI.md`,
+];
+const filesFor = (environment: Environment): readonly string[] => [
+  'permissions.json',
+  'claude.mcp.json',
+  'gemini.settings.json',
+  'meridian.sqlite',
+  ...packageFiles(environment),
+];
+const textFilesFor = (environment: Environment): readonly string[] =>
+  filesFor(environment).filter((name) => !name.endsWith('.sqlite'));
 
 /** Filesystem failures surface as problems too, never as an unhandled crash that could pass silently. */
 function provision(root: string, environment: string): string | undefined {
@@ -31,7 +47,9 @@ function yamlServerName(environment: Environment): string | undefined {
 }
 
 function snapshot(root: string, environment: Environment): readonly string[] {
-  return TEXT_FILES.map((name) => readFileSync(join(root, 'generated', environment, name), 'utf8'));
+  return textFilesFor(environment).map((name) =>
+    readFileSync(join(root, 'generated', environment, name), 'utf8'),
+  );
 }
 
 function checkEnvironment(root: string, environment: Environment): string[] {
@@ -43,7 +61,7 @@ function checkEnvironment(root: string, environment: Environment): string[] {
   if (error !== undefined) {
     return [`${environment}: provisioning failed: ${error}`];
   }
-  for (const name of FILES) {
+  for (const name of filesFor(environment)) {
     if (!existsSync(join(root, 'generated', environment, name))) {
       fail(`missing ${name}`);
     }
@@ -62,12 +80,20 @@ function checkEnvironment(root: string, environment: Environment): string[] {
   if (yamlServerName(environment) !== SERVER_NAMES[environment]) {
     fail('server name differs from starter-kit environment yaml');
   }
-  for (const [index, name] of TEXT_FILES.entries()) {
+  for (const [index, name] of textFilesFor(environment).entries()) {
     if (
+      name.endsWith('.json') &&
       name !== 'permissions.json' &&
       !(first[index] ?? '').includes(`"${SERVER_NAMES[environment]}"`)
     ) {
       fail(`${name} does not register ${SERVER_NAMES[environment]}`);
+    }
+    if (name.endsWith('.json')) {
+      try {
+        JSON.parse(first[index] ?? '');
+      } catch {
+        fail(`${name} is not valid JSON`);
+      }
     }
   }
 

@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "provision": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs scripts/provision.ts",
+    "start:mcp": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/mcp/src/main.ts",
     "start:api": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/api/src/http/main.ts",
     "start:admin": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/admin/src/main.ts",
     "validate:provisioning": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs scripts/validate-provisioning.ts",

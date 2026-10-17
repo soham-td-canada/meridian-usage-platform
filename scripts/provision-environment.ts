@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { provisionDatabase, REPO_ROOT, STARTER_KIT_DIR } from '../apps/api/src/index.js';
 import { databasePathFor, renderProvisioning } from '../apps/mcp/src/provisioning.js';
 
@@ -33,7 +33,9 @@ export function provisionEnvironment(options: ProvisionOptions): string | undefi
   }
   provisioned.value.database.close();
   for (const file of rendered.value.files) {
-    writeFileSync(join(rootDir, 'generated', rendered.value.environment, file.name), file.content);
+    const target = join(rootDir, 'generated', rendered.value.environment, file.name);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, file.content);
   }
   return undefined;
 }
