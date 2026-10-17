@@ -8,12 +8,13 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint": "eslint . --max-warnings=0",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/admin/e2e/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "start:admin": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs apps/admin/src/main.ts",
     "validate:provisioning": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/register-ts.mjs scripts/validate-provisioning.ts",
+    "test:e2e": "playwright test -c apps/admin/e2e/playwright.config.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
   },
   "engines": {
@@ -22,6 +23,7 @@
   "packageManager": "pnpm@12.11.2",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.4",

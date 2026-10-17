@@ -47,5 +47,5 @@
     "tests/**/*.ts",
     "vitest.config.ts"
   ],
-  "exclude": ["node_modules", "dist", "coverage", "generated", "starter-kit"]
+  "exclude": ["node_modules", "dist", "coverage", "generated", "starter-kit", "apps/admin/e2e"]
 }
